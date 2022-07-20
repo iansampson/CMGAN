@@ -141,7 +141,11 @@ class TSCNet(nn.Module):
 
     def forward(self, x):
         mag = torch.sqrt(x[:, 0, :, :]**2 + x[:, 1, :, :]**2).unsqueeze(1)
-        noisy_phase = torch.angle(torch.complex(x[:, 0, :, :], x[:, 1, :, :])).unsqueeze(1)
+        # Calculate noisy phase using arctangent because
+        # CoreML does not implement torch.complex
+        real = x[:, 0, :, :]
+        imag = x[:, 1, :, :]
+        noisy_phase = torch.atan2(imag, real).unsqueeze(1)
         x_in = torch.cat([mag, x], dim=1)
 
         out_1 = self.dense_encoder(x_in)

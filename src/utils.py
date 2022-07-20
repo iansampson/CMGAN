@@ -20,9 +20,10 @@ def kaiming_init(m):
 def power_compress(x):
     real = x[..., 0]
     imag = x[..., 1]
-    spec = torch.complex(real, imag)
-    mag = torch.abs(spec)
-    phase = torch.angle(spec)
+    # Use composite operators to calculate magnitude and phase
+    # because CoreML does not support torch.complex
+    mag = (real.square() + imag.square()).sqrt()
+    phase = torch.atan2(imag, real)
     mag = mag**0.3
     real_compress = mag * torch.cos(phase)
     imag_compress = mag * torch.sin(phase)
