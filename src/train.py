@@ -8,6 +8,7 @@ import logging
 from torchinfo import summary
 import argparse
 import subprocess
+from google.cloud import storage
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--epochs", type=int, default=120, help="number of epochs of training")
@@ -18,9 +19,13 @@ parser.add_argument("--init_lr", type=float, default=5e-4, help="initial learnin
 parser.add_argument("--cut_len", type=int, default=16000*2, help="cut length, default is 2 seconds in denoise "
                                                                  "and dereverberation")
 parser.add_argument("--data_dir", type=str, default='dir to VCTK-DEMAND dataset',
-                    help="dir of VCTK+DEMAND dataset")
+                    help="directory of VCTK+DEMAND dataset")
 parser.add_argument("--save_model_dir", type=str, default='./saved_model',
-                    help="dir of saved model")
+                    help="directory of saved model")
+parser.add_argument("--storage_bucket", type=str, default='',
+                    help="Google Cloud Storage bucket for saving checkpoints")
+parser.add_argument("--remote_save_model_dir", type=str, default='./saved_model',
+                    help="directory within Google Cloud Storage bucket for saving checkpoints")
 parser.add_argument("--loss_weights", type=list, default=[0.1, 0.9, 0.2, 0.05],
                     help="weights of RI components, magnitude, time loss, and Metric Disc")
 args = parser.parse_args()
@@ -213,7 +218,8 @@ class Trainer:
                     logging.info(f'Completed interval in {interval} seconds')
                     interval_start = time.process_time()
             gen_loss = self.test()
-            path = os.path.join(args.save_model_dir, 'CMGAN_epoch_' + str(epoch) + '_' + str(gen_loss)[:5])
+            filename = os.path.join('CMGAN_epoch_' + str(epoch) + '_' + str(gen_loss)[:5])
+            path = os.path.join(args.save_model_dir, filename)
             if not os.path.exists(args.save_model_dir):
                 os.makedirs(args.save_model_dir)
 
@@ -235,6 +241,31 @@ class Trainer:
                 'gen_loss': gen_loss,
                 'disc_loss': disc_loss},
             path)
+
+            if args.storage_bucket != "" and args.remote_save_model_dir != "":
+                remote_storage_path = os.path.join(args.remote_save_model_dir, filename)
+                upload_blob(args.storage_bucket, path, remote_storage_path)
+                # Assumes user is already authenticated
+
+
+def upload_blob(bucket_name, source_file_name, destination_blob_name):
+    """Uploads a file to the bucket."""
+    # The ID of your GCS bucket
+    # bucket_name = "your-bucket-name"
+    # The path to your file to upload
+    # source_file_name = "local/path/to/file"
+    # The ID of your GCS object
+    # destination_blob_name = "storage-object-name"
+
+    storage_client = storage.Client()
+    bucket = storage_client.bucket(bucket_name)
+    blob = bucket.blob(destination_blob_name)
+
+    blob.upload_from_filename(source_file_name)
+
+    print(
+        f"File {source_file_name} uploaded to {destination_blob_name}."
+    )
 
 
 def main():
