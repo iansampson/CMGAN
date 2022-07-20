@@ -23,8 +23,6 @@ parser.add_argument("--save_model_dir", type=str, default='./saved_model',
                     help="dir of saved model")
 parser.add_argument("--loss_weights", type=list, default=[0.1, 0.9, 0.2, 0.05],
                     help="weights of RI components, magnitude, time loss, and Metric Disc")
-parser.add_argument("--epoch_completion_script", type=str, default="",
-                    help="script to invoke after each epoch")
 args = parser.parse_args()
 logging.basicConfig(level=logging.INFO)
 
@@ -180,31 +178,40 @@ class Trainer:
         scheduler_D = torch.optim.lr_scheduler.StepLR(self.optimizer_disc, step_size=args.decay_epoch, gamma=0.5)
 
         # Load saved checkpoint
+        initial_epoch = 0
         checkpoint_filenames = []
         for filename in os.listdir(args.save_model_dir):
             if filename.startswith('CMGAN_epoch'):
                 checkpoint_filenames.append(filename)
-        checkpoint_filenames.sort()
-        checkpoint_path = os.path.join(args.save_model_dir, checkpoint_filenames[-1])
-        checkpoint = torch.load(checkpoint_path)
 
-        self.model.load_state_dict(checkpoint['model_state_dict'])
-        self.discriminator.load_state_dict(checkpoint['discriminator_state_dict'])
-        self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
-        self.optimizer_disc.load_state_dict(checkpoint['optimizer_disc_state_dict'])
-        scheduler_G.load_state_dict(checkpoint['scheduler_G_state_dict'])
-        scheduler_D.load_state_dict(checkpoint['scheduler_D_state_dict'])
+        if len(checkpoint_filenames) > 0:
+            checkpoint_filenames.sort()
+            checkpoint_path = os.path.join(args.save_model_dir, checkpoint_filenames[-1])
+            checkpoint = torch.load(checkpoint_path)
 
+            self.model.load_state_dict(checkpoint['model_state_dict'])
+            self.discriminator.load_state_dict(checkpoint['discriminator_state_dict'])
+            self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+            self.optimizer_disc.load_state_dict(checkpoint['optimizer_disc_state_dict'])
+            scheduler_G.load_state_dict(checkpoint['scheduler_G_state_dict'])
+            scheduler_D.load_state_dict(checkpoint['scheduler_D_state_dict'])
+            initial_epoch = checkpoint['epoch'] + 1
 
-        for epoch in range(checkpoint['epoch'] + 1, args.epochs):
+        for epoch in range(initial_epoch, args.epochs):
+            epoch_start = time.process_time()
             self.model.train()
             self.discriminator.train()
+
+            interval_start = time.process_time()
             for idx, batch in enumerate(self.train_ds):
                 step = idx + 1
                 loss, disc_loss = self.train_step(batch)
                 template = 'Epoch {}, Step {}, loss: {}, disc_loss: {}'
                 if (step % args.log_interval) == 0:
                     logging.info(template.format(epoch, step, loss, disc_loss))
+                    interval = time.process_time() - interval_start
+                    logging.info(f'Completed interval in {interval} seconds')
+                    interval_start = time.process_time()
             gen_loss = self.test()
             path = os.path.join(args.save_model_dir, 'CMGAN_epoch_' + str(epoch) + '_' + str(gen_loss)[:5])
             if not os.path.exists(args.save_model_dir):
@@ -212,6 +219,9 @@ class Trainer:
 
             scheduler_G.step()
             scheduler_D.step()
+
+            epoch_duration = time.process_time() - epoch_start
+            logging.info(f'Completed epoch {epoch} in {epoch_duration} seconds')
 
             # Save checkpoint
             torch.save({
@@ -225,9 +235,6 @@ class Trainer:
                 'gen_loss': gen_loss,
                 'disc_loss': disc_loss},
             path)
-
-            if args.epoch_completion_script != "":
-                subprocess.call(args.epoch_completion_script, shell=True)
 
 
 def main():

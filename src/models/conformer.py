@@ -327,5 +327,5 @@ class ConformerBlock(torch.nn.Module):
                                    conv_dropout=conv_dropout)
 
     def forward(self, x, mask = None):
-        lengths = torch.full((1, x.shape[0]), x.shape[1]).squeeze()
+        lengths = torch.full((1, x.shape[0]), x.shape[1]).to(x.device).squeeze()
         return self.conformer(x, lengths)[0]
