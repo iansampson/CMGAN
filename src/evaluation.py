@@ -2,7 +2,8 @@ import numpy as np
 from models import generator
 from natsort import natsorted
 import os
-from tools.compute_metrics_norm import compute_metrics_norm
+# from tools.compute_metrics_norm import compute_metrics_norm
+from tools.compute_metrics import compute_metrics
 from utils import *
 import torchaudio
 import soundfile as sf
@@ -52,7 +53,8 @@ def enhance_one_track(model, audio_path, saved_dir, cut_len, n_fft=400, hop=100,
 def evaluation(model_path, noisy_dir, clean_dir, save_tracks, saved_dir):
     n_fft = 400
     model = generator.TSCNet(num_channel=64, num_features=n_fft//2+1).cuda()
-    model.load_state_dict((torch.load(model_path)))
+    model_state_dict = torch.load(model_path)["model_state_dict"]
+    model.load_state_dict(model_state_dict)
     model.eval()
 
     if not os.path.exists(saved_dir):
