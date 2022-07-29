@@ -203,20 +203,38 @@ class Trainer:
             initial_epoch = checkpoint['epoch'] + 1
 
         for epoch in range(initial_epoch, args.epochs):
+            batch_time = AverageMeter('Time', ':6.3f')
+            data_time = AverageMeter('Data', ':6.3f')
+            losses = AverageMeter('Loss', ':.4e')
+            # top1 = AverageMeter('Acc@1', ':6.2f')
+            # top5 = AverageMeter('Acc@5', ':6.2f')
+            progress = ProgressMeter(
+                len(train_loader),
+                [batch_time, data_time, losses]), #, top1, top5],
+                prefix="Epoch: [{}]".format(epoch))
+
             epoch_start = time.process_time()
             self.model.train()
             self.discriminator.train()
 
             interval_start = time.process_time()
+            end  = time.process_time()
             for idx, batch in enumerate(self.train_ds):
+                data_time.update(time.process_time() - end)
                 step = idx + 1
                 loss, disc_loss = self.train_step(batch)
+
                 template = 'Epoch {}, Step {}, loss: {}, disc_loss: {}'
                 if (step % args.log_interval) == 0:
                     logging.info(template.format(epoch, step, loss, disc_loss))
                     interval = time.process_time() - interval_start
                     logging.info(f'Completed interval in {interval} seconds')
                     interval_start = time.process_time()
+
+                batch_time.update(time.process_time() - end)
+                end = time.time()
+                progress.display(idx)
+
             gen_loss = self.test()
             filename = os.path.join('CMGAN_epoch_' + str(epoch) + '_' + str(gen_loss)[:5])
             path = os.path.join(args.save_model_dir, filename)
@@ -239,7 +257,7 @@ class Trainer:
                 'scheduler_G_state_dict': scheduler_G.state_dict(),
                 'scheduler_D_state_dict': scheduler_D.state_dict(),
                 'gen_loss': gen_loss,
-                'disc_loss': disc_loss},
+                'disc_loss': disc_loss },
             path)
 
             if args.storage_bucket != "" and args.remote_save_model_dir != "":
