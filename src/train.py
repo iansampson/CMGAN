@@ -234,7 +234,7 @@ class Trainer:
                     interval_start = time.process_time()
 
                 batch_time.update(time.process_time() - end)
-                end = time.time()
+                end = time.process_time()
                 progress.display(idx)
 
             gen_loss = self.test()
