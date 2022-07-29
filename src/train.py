@@ -212,7 +212,7 @@ class Trainer:
             # top5 = AverageMeter('Acc@5', ':6.2f')
             progress = ProgressMeter(
                 len(train_loader),
-                [batch_time, data_time, losses]), #, top1, top5],
+                [batch_time, data_time, losses], #, top1, top5],
                 prefix="Epoch: [{}]".format(epoch))
 
             epoch_start = time.process_time()
@@ -266,6 +266,30 @@ class Trainer:
                 remote_storage_path = os.path.join(args.remote_save_model_dir, filename)
                 upload_blob(args.storage_bucket, path, remote_storage_path)
                 # Assumes user is already authenticated
+
+
+class AverageMeter(object):
+    """Computes and stores the average and current value"""
+    def __init__(self, name, fmt=':f'):
+        self.name = name
+        self.fmt = fmt
+        self.reset()
+
+    def reset(self):
+        self.val = 0
+        self.avg = 0
+        self.sum = 0
+        self.count = 0
+
+    def update(self, val, n=1):
+        self.val = val
+        self.sum += val * n
+        self.count += n
+        self.avg = self.sum / self.count
+
+    def __str__(self):
+        fmtstr = '{name} {val' + self.fmt + '} ({avg' + self.fmt + '})'
+        return fmtstr.format(**self.__dict__)
 
 
 def upload_blob(bucket_name, source_file_name, destination_blob_name):
