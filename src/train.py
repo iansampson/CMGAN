@@ -211,7 +211,7 @@ class Trainer:
             # top1 = AverageMeter('Acc@1', ':6.2f')
             # top5 = AverageMeter('Acc@5', ':6.2f')
             progress = ProgressMeter(
-                len(train_loader),
+                len(self.train_ds),
                 [batch_time, data_time, losses], #, top1, top5],
                 prefix="Epoch: [{}]".format(epoch))
 
