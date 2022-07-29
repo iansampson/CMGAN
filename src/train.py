@@ -191,9 +191,11 @@ class Trainer:
 
         if len(checkpoint_filenames) > 0:
             checkpoint_filenames.sort()
-            checkpoint_path = os.path.join(args.save_model_dir, checkpoint_filenames[-1])
+            checkpoint_filename = checkpoint_filenames[-1]
+            checkpoint_path = os.path.join(args.save_model_dir, checkpoint_filename)
             checkpoint = torch.load(checkpoint_path)
 
+            logging.info(f'Loading checkpoint {checkpoint_filename}')
             self.model.load_state_dict(checkpoint['model_state_dict'])
             self.discriminator.load_state_dict(checkpoint['discriminator_state_dict'])
             self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
@@ -236,7 +238,7 @@ class Trainer:
                 progress.display(idx)
 
             gen_loss = self.test()
-            filename = os.path.join('CMGAN_epoch_' + str(epoch) + '_' + str(gen_loss)[:5])
+            filename = os.path.join('CMGAN_epoch_' + f'{epoch:03}' + '_' + str(gen_loss)[:5])
             path = os.path.join(args.save_model_dir, filename)
             if not os.path.exists(args.save_model_dir):
                 os.makedirs(args.save_model_dir)
