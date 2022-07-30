@@ -337,7 +337,7 @@ def main():
     trainer = Trainer(train_ds, test_ds)
     # trainer.train()
     gen_loss = trainer.test()
-    print(gen_los)
+    print(gen_loss)
 
 
 if __name__ == '__main__':
