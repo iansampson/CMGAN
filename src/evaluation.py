@@ -70,7 +70,11 @@ def evaluation(model_path, noisy_dir, clean_dir, save_tracks, saved_dir):
         est_audio, length = enhance_one_track(model, noisy_path, saved_dir, 16000*16, n_fft, n_fft//4, save_tracks)
         clean_audio, sr = sf.read(clean_path)
         assert sr == 16000
-        metrics = compute_metrics(clean_audio, est_audio, sr, 0)
+        try:
+            metrics = compute_metrics(clean_audio, est_audio, sr, 0)
+        except PesqError as err:
+            print(f"Unexpected {err=}, {type(err)=}")
+            continue
         metrics = np.array(metrics)
         metrics_total += metrics
 
