@@ -8,6 +8,7 @@ from utils import *
 import torchaudio
 import soundfile as sf
 import argparse
+from pesq.cypesq import PesqError
 
 
 @torch.no_grad()
