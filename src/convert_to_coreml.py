@@ -67,11 +67,14 @@ def glu(context, node):
     x = mb.mul(x=x, y=mb.sigmoid(x=gate))
     context.add(x, torch_name=node.name)
 
-n_fft = 400
-input = torch.rand(1, 2, 321, 201) # 2 seconds
+# n_fft = 400
+n_fft = 384
+# input = torch.rand(1, 2, 321, 201) # 2 seconds
+input = torch.rand(1, 2, 334, 193) # 2 seconds
 model = generator.TSCNet(num_channel=64, num_features=n_fft//2+1).eval()
 
-checkpoint_path = "best_ckpt/CMGAN-SavedModels-CMGAN_epoch_0_0.084"
+# checkpoint_path = "best_ckpt/CMGAN-SavedModels-CMGAN_epoch_0_0.084"
+checkpoint_path = "/Volumes/ExtremeSSD/MachineLearning/SpeechEnhancement/Experiments/2022-08-02__CMGAN_coreml_189285b__SEDataset0_1/Checkpoints/Mini/CMGAN-SavedModels-2022-08-02__CMGAN_coreml_189285b__SEDataset0_1-CMGAN_epoch_010_0.205"
 checkpoint = torch.load(checkpoint_path, map_location=torch.device('cpu'))
 model.load_state_dict(checkpoint["model_state_dict"])
 
