@@ -104,9 +104,9 @@ class MaskDecoder(nn.Module):
         x = self.dense_block(x)
         x = self.sub_pixel(x)
         x = self.conv_1(x)
-        x = self.prelu(self.norm(x))
-        x = self.final_conv(x).permute(0, 3, 2, 1).squeeze(-1)
-        return self.prelu_out(x).permute(0, 2, 1).unsqueeze(1)
+        x = self.prelu(self.norm(x)) # [B, 1, T, F]
+        x = self.final_conv(x).permute(0, 3, 2, 1) # [B, F, T, 1]
+        return self.prelu_out(x).permute(0, 3, 2, 1) # [B, 1, T, F]
 
 
 class ComplexDecoder(nn.Module):
@@ -121,13 +121,12 @@ class ComplexDecoder(nn.Module):
     def forward(self, x):
         x = self.dense_block(x)
         x = self.sub_pixel(x)
-        x = self.prelu(self.norm(x))
+        x = self.norm(x)
         x = self.conv(x)
         return x
 
 
 class TSCNet(nn.Module):
-    # def __init__(self, num_channel=64, num_features):
     def __init__(self, num_channel, num_features):
         super(TSCNet, self).__init__()
         self.dense_encoder = DenseEncoder(in_channel=3, channels=num_channel)

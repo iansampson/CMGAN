@@ -71,6 +71,10 @@ n_fft = 400
 input = torch.rand(1, 2, 321, 201) # 2 seconds
 model = generator.TSCNet(num_channel=64, num_features=n_fft//2+1).eval()
 
+checkpoint_path = "best_ckpt/CMGAN-SavedModels-CMGAN_epoch_0_0.084"
+checkpoint = torch.load(checkpoint_path, map_location=torch.device('cpu'))
+model.load_state_dict(checkpoint["model_state_dict"])
+
 with torch.no_grad():
     traced_model = torch.jit.trace(model, input)
     torch.jit.save(traced_model, "CMGAN.pt")
