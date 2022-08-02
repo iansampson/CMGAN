@@ -18,6 +18,8 @@ parser.add_argument("--decay_epoch", type=int, default=30, help="epoch from whic
 parser.add_argument("--init_lr", type=float, default=5e-4, help="initial learning rate")
 parser.add_argument("--cut_len", type=int, default=16000*2, help="cut length, default is 2 seconds in denoise "
                                                                  "and dereverberation")
+parser.add_argument("--fft_size", type=int, default=400, help="size of the STFT window")
+parser.add_argument("--hop_size", type=int, default=100, help="size of the STFT hop")
 parser.add_argument("--data_dir", type=str, default='dir to VCTK-DEMAND dataset',
                     help="directory of VCTK+DEMAND dataset")
 parser.add_argument("--save_model_dir", type=str, default='./saved_model',
@@ -33,9 +35,9 @@ logging.basicConfig(level=logging.INFO)
 
 
 class Trainer:
-    def __init__(self, train_ds, test_ds):
-        self.n_fft = 400
-        self.hop = 100
+    def __init__(self, train_ds, test_ds, n_fft, hop):
+        self.n_fft = n_fft
+        self.hop = hop
         self.train_ds = train_ds
         self.test_ds = test_ds
         self.model = TSCNet(num_channel=64, num_features=self.n_fft // 2 + 1).cuda()
@@ -334,7 +336,7 @@ def main():
     available_gpus = [torch.cuda.get_device_name(i) for i in range(torch.cuda.device_count())]
     print(available_gpus)
     train_ds, test_ds = dataloader.load_data(args.data_dir, args.batch_size, 2, args.cut_len)
-    trainer = Trainer(train_ds, test_ds)
+    trainer = Trainer(train_ds, test_ds, args.fft_size, args.hop_size)
     trainer.train()
 
 

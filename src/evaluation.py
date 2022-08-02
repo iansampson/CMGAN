@@ -12,7 +12,7 @@ from pesq.cypesq import PesqError
 
 
 @torch.no_grad()
-def enhance_one_track(model, audio_path, saved_dir, cut_len, n_fft=400, hop=100, save_tracks=False):
+def enhance_one_track(model, audio_path, saved_dir, cut_len, n_fft, hop, save_tracks=False):
     name = os.path.split(audio_path)[-1]
     noisy, sr = torchaudio.load(audio_path)
     assert sr == 16000
@@ -22,6 +22,9 @@ def enhance_one_track(model, audio_path, saved_dir, cut_len, n_fft=400, hop=100,
     noisy = torch.transpose(noisy, 0, 1)
     noisy = torch.transpose(noisy * c, 0, 1)
 
+    # TODO: Find out why 100 is used here
+    # (and if it corresponds to the hop size,
+    # make it a variable)
     length = noisy.size(-1)
     frame_num = int(np.ceil(length / 100))
     padded_len = frame_num * 100
@@ -51,8 +54,7 @@ def enhance_one_track(model, audio_path, saved_dir, cut_len, n_fft=400, hop=100,
     return est_audio, length
 
 
-def evaluation(model_path, noisy_dir, clean_dir, save_tracks, saved_dir):
-    n_fft = 400
+def evaluation(model_path, noisy_dir, clean_dir, save_tracks, saved_dir, n_fft, hop):
     model = generator.TSCNet(num_channel=64, num_features=n_fft//2+1).cuda()
     model_state_dict = torch.load(model_path)["model_state_dict"]
     model.load_state_dict(model_state_dict)
@@ -68,7 +70,7 @@ def evaluation(model_path, noisy_dir, clean_dir, save_tracks, saved_dir):
     for audio in audio_list:
         noisy_path = os.path.join(noisy_dir, audio)
         clean_path = os.path.join(clean_dir, audio)
-        est_audio, length = enhance_one_track(model, noisy_path, saved_dir, 16000*16, n_fft, n_fft//4, save_tracks)
+        est_audio, length = enhance_one_track(model, noisy_path, saved_dir, 16000*16, n_fft, hop, save_tracks)
         clean_audio, sr = sf.read(clean_path)
         assert sr == 16000
         try:
@@ -91,6 +93,8 @@ parser.add_argument("--test_dir", type=str, default='dir to your VCTK-DEMAND tes
                     help="noisy tracks dir to be enhanced")
 parser.add_argument("--save_tracks", type=str, default=True, help="save predicted tracks or not")
 parser.add_argument("--save_dir", type=str, default='./saved_tracks_best', help="where enhanced tracks to be saved")
+parser.add_argument("--fft_size", type=int, default=400, help="size of the STFT window")
+parser.add_argument("--hop_size", type=int, default=100, help="size of the STFT hop")
 
 args = parser.parse_args()
 
@@ -98,4 +102,4 @@ args = parser.parse_args()
 if __name__ == '__main__':
     noisy_dir = os.path.join(args.test_dir, 'noisy')
     clean_dir = os.path.join(args.test_dir, 'clean')
-    evaluation(args.model_path, noisy_dir, clean_dir, args.save_tracks, args.save_dir)
+    evaluation(args.model_path, noisy_dir, clean_dir, args.save_tracks, args.save_dir, args.fft_size, args.hop_size)

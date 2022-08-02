@@ -2,7 +2,7 @@ import numpy as np
 from models import generator
 from natsort import natsorted
 import os
-from tools.compute_metrics_norm import compute_metrics_norm
+from tools.compute_metrics import compute_metrics
 from utils import *
 import torchaudio
 import soundfile as sf
@@ -58,12 +58,12 @@ args = parser.parse_args()
 if __name__ == '__main__':
     n_fft = 400
     model = generator.TSCNet(num_channel=64, num_features=n_fft//2+1)
-    model_state_dict = torch.load(model_path)["model_state_dict"]
-    model.load_state_dict(model_state_dict, map_location=torch.device("cpu"))
+    model_state_dict = torch.load(args.model_path, map_location=torch.device("cpu"))["model_state_dict"]
+    model.load_state_dict(model_state_dict)
     model.eval()
-    est_audio, length = enhance_one_track(model,
-                                          args.input,
-                                          args.output_dir,
-                                          16000*16,
-                                          n_fft,
-                                          n_fft//4, True)
+    enhance_one_track(model,
+                      args.input,
+                      args.output_dir,
+                      16000*16,
+                      n_fft,
+                      n_fft//4, True)
