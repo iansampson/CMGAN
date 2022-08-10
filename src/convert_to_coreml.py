@@ -89,10 +89,9 @@ if args.checkpoint_path != None:
 
 with torch.no_grad():
     traced_model = torch.jit.trace(model, input)
-    torch.jit.save(traced_model, "CMGAN_AFT_BatchSize1.pt")
 
     ml_model = ct.convert(
       traced_model,
       convert_to="mlprogram",
       inputs=[ct.TensorType(shape=input.shape)])
-    ml_model.save("CMGAN.mlpackage")
+    ml_model.save("CMGAN_AFT.mlpackage")
