@@ -54,11 +54,11 @@ class DenseEncoder(nn.Module):
 
 
 class TSCB(nn.Module):
-    def __init__(self, num_channel=64):
+    def __init__(self, num_channel=64, num_heads=4):
         super(TSCB, self).__init__()
-        self.time_conformer = ConformerBlock(dim=num_channel, dim_head=num_channel//4, heads=4,
+        self.time_conformer = ConformerBlock(dim=num_channel, dim_head=num_channel//4, heads=num_heads,
                                              conv_kernel_size=31, attn_dropout=0.2, ff_dropout=0.2)
-        self.freq_conformer = ConformerBlock(dim=num_channel, dim_head=num_channel//4, heads=4,
+        self.freq_conformer = ConformerBlock(dim=num_channel, dim_head=num_channel//4, heads=num_heads,
                                              conv_kernel_size=31, attn_dropout=0.2, ff_dropout=0.2)
 
     def forward(self, x_in):
