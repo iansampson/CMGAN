@@ -1,5 +1,6 @@
 from typing import Optional, Tuple
 import torch
+from models.multihead_attention import MultiHeadAttention
 
 
 def _lengths_to_padding_mask(lengths: torch.Tensor) -> torch.Tensor:
@@ -147,7 +148,8 @@ class ConformerLayer(torch.nn.Module):
         self.ffn1 = _FeedForwardModule(input_dim, ffn_dim, dropout=ffn_dropout)
 
         self.self_attn_layer_norm = torch.nn.LayerNorm(input_dim)
-        self.self_attn = torch.nn.MultiheadAttention(input_dim, num_attention_heads, dropout=attn_dropout)
+        # self.self_attn = torch.nn.MultiheadAttention(input_dim, num_attention_heads, dropout=attn_dropout)
+        self.self_attn = MultiHeadAttention(input_dim, n_head=num_attention_heads, dropout=attn_dropout)
         self.self_attn_dropout = torch.nn.Dropout(attn_dropout)
 
         self.conv_module = _ConvolutionModule(
@@ -189,13 +191,22 @@ class ConformerLayer(torch.nn.Module):
 
         residual = x
         x = self.self_attn_layer_norm(x)
+
+        # TODO: Avoid transpose if possible
+        # TODO: Get mask to work
+        x = x.unsqueeze(2)
+        x = x.transpose(1, 3)
+        # key_padding_mask = key_padding_mask.long() * -1e4
         x, _ = self.self_attn(
-            query=x,
-            key=x,
-            value=x,
-            key_padding_mask=key_padding_mask,
-            need_weights=False,
+            q=x,
+            k=x,
+            v=x,
+            # k_mask=key_padding_mask, # key_padding_mask
+            return_weights=False
         )
+        x = x.transpose(1, 3)
+        x = x.squeeze(2)
+
         x = self.self_attn_dropout(x)
         x = x + residual
 
