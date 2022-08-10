@@ -54,12 +54,22 @@ class DenseEncoder(nn.Module):
 
 
 class TSCB(nn.Module):
-    def __init__(self, num_channel=64):
+    def __init__(self, input_width: int, input_height: int, batch_size: int, num_channel=64):
         super(TSCB, self).__init__()
-        self.time_conformer = ConformerBlock(dim=num_channel, dim_head=num_channel//4, heads=4,
-                                             conv_kernel_size=31, attn_dropout=0.2, ff_dropout=0.2)
-        self.freq_conformer = ConformerBlock(dim=num_channel, dim_head=num_channel//4, heads=4,
-                                             conv_kernel_size=31, attn_dropout=0.2, ff_dropout=0.2)
+        self.time_conformer = ConformerBlock(seq_len=input_height * batch_size,
+                                             dim=num_channel,
+                                             dim_head=num_channel//4,
+                                             heads=4,
+                                             conv_kernel_size=31,
+                                             attn_dropout=0.2,
+                                             ff_dropout=0.2)
+        self.freq_conformer = ConformerBlock(seq_len=input_width * batch_size,
+                                             dim=num_channel,
+                                             dim_head=num_channel//4,
+                                             heads=4,
+                                             conv_kernel_size=31,
+                                             attn_dropout=0.2,
+                                             ff_dropout=0.2)
 
     def forward(self, x_in):
         b, c, t, f = x_in.size()
@@ -127,14 +137,27 @@ class ComplexDecoder(nn.Module):
 
 
 class TSCNet(nn.Module):
-    def __init__(self, num_channel, num_features):
+    def __init__(self, num_channel, num_features, input_width, batch_size):
         super(TSCNet, self).__init__()
         self.dense_encoder = DenseEncoder(in_channel=3, channels=num_channel)
 
-        self.TSCB_1 = TSCB(num_channel=num_channel)
-        self.TSCB_2 = TSCB(num_channel=num_channel)
-        self.TSCB_3 = TSCB(num_channel=num_channel)
-        self.TSCB_4 = TSCB(num_channel=num_channel)
+        input_height = num_features // 2 + 1
+        self.TSCB_1 = TSCB(num_channel=num_channel,
+                           input_height=input_height,
+                           input_width=input_width,
+                           batch_size=batch_size)
+        self.TSCB_2 = TSCB(num_channel=num_channel,
+                           input_height=input_height,
+                           input_width=input_width,
+                           batch_size=batch_size)
+        self.TSCB_3 = TSCB(num_channel=num_channel,
+                           input_height=input_height,
+                           input_width=input_width,
+                           batch_size=batch_size)
+        self.TSCB_4 = TSCB(num_channel=num_channel,
+                           input_height=input_height,
+                           input_width=input_width,
+                           batch_size=batch_size)
 
         self.mask_decoder = MaskDecoder(num_features, num_channel=num_channel, out_channel=1)
         self.complex_decoder = ComplexDecoder(num_channel=num_channel)
@@ -148,6 +171,7 @@ class TSCNet(nn.Module):
         noisy_phase = torch.atan2(imag, real).unsqueeze(1)
         x_in = torch.cat([mag, x], dim=1)
 
+        # print(x_in.shape) # torch.Size([1, 3, 334, 193])
         out_1 = self.dense_encoder(x_in)
         out_2 = self.TSCB_1(out_1)
         out_3 = self.TSCB_2(out_2)

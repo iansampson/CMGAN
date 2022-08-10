@@ -1,6 +1,6 @@
 from typing import Optional, Tuple
 import torch
-from models.multihead_attention import MultiHeadAttention
+from aft_pytorch import AFTFull
 
 
 def _lengths_to_padding_mask(lengths: torch.Tensor) -> torch.Tensor:
@@ -132,6 +132,7 @@ class ConformerLayer(torch.nn.Module):
 
     def __init__(
         self,
+        seq_len: int,
         input_dim: int,
         ffn_dim: int,
         conv_dim: int,
@@ -148,8 +149,11 @@ class ConformerLayer(torch.nn.Module):
         self.ffn1 = _FeedForwardModule(input_dim, ffn_dim, dropout=ffn_dropout)
 
         self.self_attn_layer_norm = torch.nn.LayerNorm(input_dim)
+        # TODO: Avoid hard-coding the sequence length
+        self.self_attn = AFTFull(max_seqlen=seq_len, dim=input_dim, hidden_dim=input_dim)
+        # TODO: Consider adding another dropout
+        # Consider expanding the hidden dimensions
         # self.self_attn = torch.nn.MultiheadAttention(input_dim, num_attention_heads, dropout=attn_dropout)
-        self.self_attn = MultiHeadAttention(input_dim, n_head=num_attention_heads, dropout=attn_dropout)
         self.self_attn_dropout = torch.nn.Dropout(attn_dropout)
 
         self.conv_module = _ConvolutionModule(
@@ -192,20 +196,7 @@ class ConformerLayer(torch.nn.Module):
         residual = x
         x = self.self_attn_layer_norm(x)
 
-        # TODO: Avoid transpose if possible
-        # TODO: Get mask to work
-        x = x.unsqueeze(2)
-        x = x.transpose(1, 3)
-        # key_padding_mask = key_padding_mask.long() * -1e4
-        x, _ = self.self_attn(
-            q=x,
-            k=x,
-            v=x,
-            # k_mask=key_padding_mask, # key_padding_mask
-            return_weights=False
-        )
-        x = x.transpose(1, 3)
-        x = x.squeeze(2)
+        x = self.self_attn(x)
 
         x = self.self_attn_dropout(x)
         x = x + residual
@@ -253,6 +244,7 @@ class Conformer(torch.nn.Module):
 
     def __init__(
         self,
+        seq_len: int,
         input_dim: int,
         num_heads: int,
         ffn_dim: int,
@@ -270,6 +262,7 @@ class Conformer(torch.nn.Module):
         self.conformer_layers = torch.nn.ModuleList(
             [
                 ConformerLayer(
+                    seq_len,
                     input_dim,
                     ffn_dim,
                     conv_dim,
@@ -316,7 +309,8 @@ class ConformerBlock(torch.nn.Module):
     def __init__(
         self,
         *,
-        dim,
+        seq_len: int,
+        dim: int,
         dim_head = 64,
         heads = 8,
         ff_mult = 4,
@@ -327,7 +321,8 @@ class ConformerBlock(torch.nn.Module):
         conv_dropout = 0.
     ):
         super().__init__()
-        self.conformer = Conformer(input_dim=dim,
+        self.conformer = Conformer(seq_len=seq_len,
+                                   input_dim=dim,
                                    num_heads=heads,
                                    ffn_dim=dim * ff_mult,
                                    conv_dim=dim * conv_expansion_factor,

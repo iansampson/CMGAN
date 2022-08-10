@@ -72,9 +72,16 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--checkpoint_path", type=str, help="path to saved model for conversion to CoreML")
 args = parser.parse_args()
 
+batch_size = 1
 n_fft = 384
-input = torch.rand(1, 2, 334, 193) # 2 seconds
-model = generator.TSCNet(num_channel=64, num_features=n_fft//2+1).eval()
+num_features = n_fft//2+1
+input_width = 334
+input = torch.rand(batch_size, 2, input_width, num_features) # 2 seconds
+
+model = generator.TSCNet(num_channel=64,
+                         num_features=num_features,
+                         input_width=input_width,
+                         batch_size=batch_size).eval()
 
 if args.checkpoint_path != None:
     checkpoint = torch.load(args.checkpoint_path, map_location=torch.device('cpu'))
@@ -82,7 +89,7 @@ if args.checkpoint_path != None:
 
 with torch.no_grad():
     traced_model = torch.jit.trace(model, input)
-    torch.jit.save(traced_model, "CMGAN.pt")
+    torch.jit.save(traced_model, "CMGAN_AFT_BatchSize1.pt")
 
     ml_model = ct.convert(
       traced_model,
