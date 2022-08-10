@@ -72,9 +72,10 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--checkpoint_path", type=str, help="path to saved model for conversion to CoreML")
 args = parser.parse_args()
 
-n_fft = 384
+num_fft = 384
+num_features = num_fft // 2 + 1
 input = torch.rand(1, 2, 334, 193) # 2 seconds
-model = generator.TSCNet(num_channel=64, num_features=n_fft//2+1).eval()
+model = generator.TSCNet(num_channel=64, num_features=num_features).eval()
 
 if args.checkpoint_path != None:
     checkpoint = torch.load(args.checkpoint_path, map_location=torch.device('cpu'))
